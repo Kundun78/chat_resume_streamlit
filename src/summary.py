@@ -19,10 +19,11 @@ def TOC_proposition( text , my_model_name = "gradientai/Llama-3-8B-Instruct-262k
     prompt_systeme = """Tu es un agent de l'administration française qui fait des synthèses de textes. Tu sais en particulier faire des plans de synthèses. Tu parles en français."""
 
 
-    prompt_user_template = f"""Tu dois me faire un plan d'une synthèse du texte suivant : \n 
+    prompt_user_template = f"""Tu dois me faire un plan d'une synthèse de texte. Je veux uniquement des chapitres, pas de sous chapitre. 
+                       Voici le texte: \n 
                         ```{text}``` \n 
                         Réponds en français.
-                        Je veux un plan en 2, 3 ou 4 parties. Donne moi les titres de chaque chapitre.
+                        Je veux un plan en 2, 3 ou 4 parties. Donne moi les titres de chaque chapitre. Je veux uniquement des grandes parties, pas de sous partie.
                         REPONDS EN FRANCAIS
                         """
 
@@ -48,8 +49,7 @@ def TOC_proposition( text , my_model_name = "gradientai/Llama-3-8B-Instruct-262k
         temperature=0.2,
         messages=chat_messages
     )
-    output = chat_response.choices[0].message.content
-    print(output)
+    output = "Voila ma proposition de plan : \n" + chat_response.choices[0].message.content 
     return output
 
 
@@ -125,7 +125,7 @@ def map_reduce_with_toc(list_doc, plan, my_model_name = "meta-llama/Meta-Llama-3
 
     map_reduce_outputs = map_reduce_chain(text_docs_splitted)
 
-    return map_reduce_outputs
+    return map_reduce_outputs['output_text']
 
 def maj_summary_RAG(retour_utilisateur, resume, retrieved_doc, my_model_name = "meta-llama/Meta-Llama-3-8B-Instruct"): 
     
@@ -269,6 +269,50 @@ def classifier_RAG( retour_utilisateur , my_model_name = "meta-llama/Meta-Llama-
     output = chat_response.choices[0].message.content
     print(output)
     return output
+
+def classifier_plan( retour_utilisateur , plan, my_model_name = "meta-llama/Meta-Llama-3-8B-Instruct"):
+
+
+    prompt_systeme = """Tu es un agent qui doit classifier les besoins d'un utilisateur qui demande des modifications sur un texte généré. """
+
+    prompt_user_template = f"""On a proposé un plan à un utilisateur, voici le plan: 
+                        ```{plan}```\n 
+                        On lui a ensuite demandé si ce plan lui convenait. Voici son retour : \n 
+                        ```{retour_utilisateur}``` \n 
+                        
+                        Tu vas devoir répondre avec un plan.
+                        Si l'utilisateur est satisfait du plan qui a été proposé, garde le et répond par ce même plan.
+                        Si l'utilisateur mentionne des modifications du plan, fais ces modifications et répond avec un plan qui respecte les modifications
+                        Si l'utilisateur propose son propre plan, répond avec le plan de l'utilisateur.
+                            TU NE DOIS REPONDRE QU'AVEC UN PLAN
+                            
+                            """
+
+    chat_messages = [
+            {"role": "system", "content": prompt_systeme},
+            {"role": "user", "content": prompt_user_template},
+        ]
+
+
+        # Mistral models don't have any system role messages
+    if my_model_name == "mistralai/Mixtral-8x7B-Instruct-v0.1":
+            chat_messages.pop(0)
+
+    client = client_openAI_init(my_model_name)
+
+        # stream chat.completions
+    chat_response = client.chat.completions.create(
+            model=my_model_name, # this must be the model name the was deployed to the API server
+        #    stream=True,
+            max_tokens=1000,
+            top_p=0.9,
+            temperature=0.2,
+            messages=chat_messages
+        )
+    output = chat_response.choices[0].message.content
+    #print(output)
+    return output
+
 
 def make_database(doc_texte):
     
