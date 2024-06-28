@@ -10,7 +10,7 @@ from langchain.schema.output_parser import StrOutputParser
 
 
 
-from API_setup import set_model_endpoint, client_openAI_init
+from utils.API_setup import set_model_endpoint, client_openAI_init
 
 
 def TOC_proposition( text , my_model_name = "gradientai/Llama-3-8B-Instruct-262k"):
